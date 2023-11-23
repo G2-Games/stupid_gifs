@@ -8,7 +8,7 @@ Just run `cargo build --release` in the repo after cloning, and you'll get a fil
 
 ## Keybinds: 
 ```
-Space: Pause
+Space:      Pause
 Left/Right: Skip 5 seconds
-Scroll: Scrub through frames
+Scroll:     Scrub through frames
 ```
