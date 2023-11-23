@@ -1,7 +1,7 @@
 use pixels::{Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
+use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::event::{VirtualKeyCode, Event};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
@@ -31,7 +31,7 @@ fn main() {
 
         chosen_file = match files {
             Some(files) => files,
-            None => exit(0)
+            None => exit(0),
         };
     } else {
         chosen_file = PathBuf::from(&args[1]);
@@ -50,7 +50,10 @@ fn main() {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
     let window = {
-        let size = LogicalSize::new(frames[0].buffer().width() as f64, frames[0].buffer().height() as f64);
+        let size = LogicalSize::new(
+            frames[0].buffer().width() as f64,
+            frames[0].buffer().height() as f64,
+        );
         WindowBuilder::new()
             .with_title("GIF Viewer")
             .with_inner_size(size)
@@ -64,7 +67,12 @@ fn main() {
     let mut pixels = {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(frames[0].buffer().width(), frames[0].buffer().height(), surface_texture).unwrap()
+        Pixels::new(
+            frames[0].buffer().width(),
+            frames[0].buffer().height(),
+            surface_texture,
+        )
+        .unwrap()
     };
 
     let mut delay = frames[0].delay();
@@ -72,16 +80,17 @@ fn main() {
     let mut now = Instant::now();
     let mut index = 0;
     let mut paused = false;
+    let mut progress = true;
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent {
-                event: winit::event::WindowEvent::MouseWheel{ delta, ..},
+                event: winit::event::WindowEvent::MouseWheel { delta, .. },
                 ..
             } => match delta {
                 winit::event::MouseScrollDelta::LineDelta(_, value) => {
                     index = (index + ((value) as isize) as usize) % frames.len();
-                },
-                winit::event::MouseScrollDelta::PixelDelta(_) => ()
+                }
+                winit::event::MouseScrollDelta::PixelDelta(_) => (),
             },
             _ => (),
         }
@@ -94,8 +103,12 @@ fn main() {
                 return;
             }
 
-            if input.key_pressed(VirtualKeyCode::P) || input.key_pressed(VirtualKeyCode::Space) {
+            if input.key_pressed(VirtualKeyCode::Space) {
                 paused = !paused;
+            }
+
+            if input.key_pressed(VirtualKeyCode::P) {
+                progress = !progress;
             }
 
             if input.key_pressed(VirtualKeyCode::Left) {
@@ -111,7 +124,7 @@ fn main() {
             } else if input.mouse_pressed(1) && input.mouse().is_some() {
                 match window.drag_resize_window(winit::window::ResizeDirection::SouthEast) {
                     Ok(_) => (),
-                    Err(_) => println!("Resize dragging is {}", "unsupported".red())
+                    Err(_) => println!("Resize dragging is {}", "unsupported".red()),
                 };
             }
 
@@ -126,21 +139,38 @@ fn main() {
         if now.elapsed() >= delay.into() {
             let time_taken = now.elapsed();
             let gif_frame = &frames[index];
-            delay_ms = delay.numer_denom_ms().0 / delay.numer_denom_ms().1;
             if ((delay_ms - 2)..(delay_ms + 2)).contains(&(time_taken.as_millis() as u32)) {
                 //println!("Frame #{:0>5}: {}ms ≈ {}ms", index + 1, time_taken.as_millis().to_string().green(), delay_ms.to_string())
-            } else if ((delay_ms - 10)..(delay_ms + 10)).contains(&(time_taken.as_millis() as u32)) {
-                println!("Frame #{:0>5}: {}ms > {}ms", index + 1, time_taken.as_millis().to_string().yellow(), delay_ms.to_string().bold())
+            } else if ((delay_ms - 10)..(delay_ms + 10)).contains(&(time_taken.as_millis() as u32))
+            {
+                println!(
+                    "Frame #{:0>5}: {}ms > {}ms",
+                    index + 1,
+                    time_taken.as_millis().to_string().yellow(),
+                    delay_ms.to_string().bold()
+                )
             } else {
-                println!("Frame #{:0>5}: {}ms > {}ms", index + 1, time_taken.as_millis().to_string().red(), delay_ms.to_string().bold())
+                println!(
+                    "Frame #{:0>5}: {}ms > {}ms",
+                    index + 1,
+                    time_taken.as_millis().to_string().red(),
+                    delay_ms.to_string().bold()
+                )
             }
             now = Instant::now();
             // Update internal state and request a redraw
             let frame = pixels.frame_mut();
             let width = gif_frame.buffer().width() as usize;
             let height = gif_frame.buffer().height() as usize;
-            for (i, pixel) in frame.chunks_exact_mut(4).zip(gif_frame.buffer().chunks_exact(4)).enumerate() {
-                if i > (height - 25) * width && ((i % width) as f32) < ((index as f32 / frames.len() as f32) * width as f32) {
+            for (i, pixel) in frame
+                .chunks_exact_mut(4)
+                .zip(gif_frame.buffer().chunks_exact(4))
+                .enumerate()
+            {
+                if i > (height - 25) * width
+                    && ((i % width) as f32) < ((index as f32 / frames.len() as f32) * width as f32)
+                    && progress == true
+                {
                     pixel.0[0] = 255 - pixel.1[0]; // R
                     pixel.0[1] = 255 - pixel.1[1];
                     pixel.0[2] = 255 - pixel.1[2]; // B
@@ -151,7 +181,7 @@ fn main() {
                 pixel.0[1] = pixel.1[1]; // G
                 pixel.0[2] = pixel.1[2]; // B
                 pixel.0[3] = 0xFF // A
-            };
+            }
 
             // Draw it to the `SurfaceTexture`
             pixels.render().unwrap();
