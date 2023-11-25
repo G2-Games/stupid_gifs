@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"] // Hides the console on windows
+
 use pixels::{Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
@@ -20,24 +22,23 @@ use colored::Colorize;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let chosen_file;
 
-    if args.len() <= 1 {
+    let chosen_file = if args.len() <= 1 {
         let files = FileDialog::new()
             .set_title("Select GIF")
             .set_directory("~/")
             .add_filter("gif", &["gif"])
             .pick_file();
 
-        chosen_file = match files {
+        match files {
             Some(files) => files,
             None => exit(0),
-        };
+        }
     } else {
-        chosen_file = PathBuf::from(&args[1]);
-    }
+        PathBuf::from(&args[1])
+    };
 
-    let file_in = File::open(&chosen_file).unwrap();
+    let file_in = File::open(chosen_file).unwrap();
     let decoder = GifDecoder::new(file_in).unwrap();
     println!("Loaded gif...");
     let frames = decoder.into_frames();
@@ -82,18 +83,16 @@ fn main() {
     let mut paused = false;
     let mut progress = true;
     event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent {
+        if let Event::WindowEvent {
                 event: winit::event::WindowEvent::MouseWheel { delta, .. },
                 ..
-            } => match delta {
-                winit::event::MouseScrollDelta::LineDelta(_, value) => {
-                    index = (index + ((value) as isize) as usize) % frames.len();
-                }
-                winit::event::MouseScrollDelta::PixelDelta(_) => (),
-            },
-            _ => (),
-        }
+            } = event { match delta {
+            winit::event::MouseScrollDelta::LineDelta(_, value) => {
+                index = (index + ((value) as isize) as usize) % frames.len();
+            }
+            winit::event::MouseScrollDelta::PixelDelta(_) => (),
+        } }
+
 
         // Handle input events
         if input.update(&event) {
@@ -112,11 +111,11 @@ fn main() {
             }
 
             if input.key_pressed(VirtualKeyCode::Left) {
-                index = (index - (10) as usize) % frames.len();
+                index = (index - 10) % frames.len();
             }
 
             if input.key_pressed(VirtualKeyCode::Right) {
-                index = (index + (10) as usize) % frames.len();
+                index = (index + 10) % frames.len();
             }
 
             if input.mouse_pressed(0) && input.mouse().is_some() {
@@ -129,7 +128,7 @@ fn main() {
             }
 
             if let Some(size) = input.window_resized() {
-                if let Err(_) = pixels.resize_surface(size.width, size.height) {
+                if pixels.resize_surface(size.width, size.height).is_err() {
                     *control_flow = ControlFlow::Exit;
                     return;
                 }
@@ -169,7 +168,7 @@ fn main() {
             {
                 if i > (height - 25) * width
                     && ((i % width) as f32) < ((index as f32 / frames.len() as f32) * width as f32)
-                    && progress == true
+                    && progress
                 {
                     pixel.0[0] = 255 - pixel.1[0]; // R
                     pixel.0[1] = 255 - pixel.1[1];
