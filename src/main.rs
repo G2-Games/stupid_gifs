@@ -62,7 +62,7 @@ fn main() {
             .unwrap()
     };
 
-    window.set_decorations(false);
+    //window.set_decorations(false);
     window.set_resizable(true);
 
     let mut pixels = {
